@@ -12,7 +12,7 @@ result
 
 ![img left](img/left_disparity.png)
 
-![right left](img/left_disparity.png)
+![right left](img/right_disparity.png)
 
 
 PatchMatch Stereo:
