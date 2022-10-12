@@ -56,7 +56,7 @@ void PatchMatch::computeGreyGradient(const cv::Mat3b& frame, cv::Mat2f& grad) {
     //除以8是为了让梯度的最大值不超过255，这样计算代价时梯度差和颜色差位于同一个尺度
     x_gard = x_gard / 8;
     y_gard = y_gard / 8;
-#pragma omp parallel for num_threads(4)
+#pragma omp parallel for num_threads(8) collapse(2)
     for (int y = 0; y < frame.rows; y++) {
         for (int x = 0; x < frame.cols; x++) {
             grad(y, x)[0] = x_gard.at<float>(y, x);
@@ -77,7 +77,7 @@ void PatchMatch::initializeRandomPlanes(Plane** planes, float max_d) {
     std::mt19937 rng(dev());
     std::uniform_real_distribution<float> rand_d(0.0, max_d);
     std::uniform_real_distribution<float> rand_n(-1.0, 1.0);
-#pragma omp parallel for
+#pragma omp parallel for num_threads(8) collapse(2)
     for (int y = 0; y < rows; y++) {
         /* code */
         for (int x = 0; x < cols; x++) {
@@ -116,7 +116,7 @@ void PatchMatch::spatialPropagation(int x, int y, int image_view, int iter) {
             int nx = x + offset.second;
             if (!isInside(nx, ny, 0, 0, cols, rows))
                 continue;
-            Plane plane_p = planes1[ny][nx];
+            const Plane& plane_p = planes1[ny][nx];
             float new_cost = planeMatchCost(plane_p, x, y, WINDOW_SIZE, image_view);
             if (new_cost < old_cost) {
                 old_plane = plane_p;
@@ -130,7 +130,7 @@ void PatchMatch::spatialPropagation(int x, int y, int image_view, int iter) {
             int nx = x + offset.second;
             if (!isInside(nx, ny, 0, 0, cols, rows))
                 continue;
-            Plane plane_p = planes2[ny][nx];
+            const Plane& plane_p = planes2[ny][nx];
             float new_cost = planeMatchCost(plane_p, x, y, WINDOW_SIZE, image_view);
             if (new_cost < old_cost) {
                 old_plane = plane_p;
@@ -153,7 +153,7 @@ void PatchMatch::viewPropagation(int x, int y, int image_view) {
     // computing matching point in other view
     // reparameterized corresopndent plane in other view
     int mx, my;
-    Plane new_plane = view_plane.viewTransform(x, y, sign, mx, my);
+    const Plane& new_plane = view_plane.viewTransform(x, y, sign, mx, my);
     if (!isInside(mx, my, 0, 0, cols, rows))
         return;
     // check the condition
@@ -172,7 +172,7 @@ void PatchMatch::viewPropagation(int x, int y, int image_view) {
 void PatchMatch::preComputePixelsWeights(
     const cv::Mat3b& frame, cv::Mat& weights, int window_length) {
     int half = window_length / 2;
-#pragma omp parallel for
+#pragma omp parallel for num_threads(8) collapse(2)
     for (int cx = 0; cx < frame.cols; cx++) {
         for (int cy = 0; cy < frame.rows; cy++) {
             for (int x = cx - half; x <= cx + half; x++) {
@@ -285,7 +285,7 @@ void PatchMatch::fillInvalidPixels(int y, int x, Plane** planes, const cv::Mat1b
 }
 
 void PatchMatch::planesToDisparity(Plane** const planes, cv::Mat1f& disp) {
-#pragma omp parallel for
+#pragma omp parallel for num_threads(8) collapse(2)
     for (int x = 0; x < cols; x++) {
         for (int y = 0; y < rows; y++) {
             disp(y, x) = disparity(x, y, planes[y][x]);
@@ -367,33 +367,33 @@ void PatchMatch::init(const cv::Mat3b& img1, const cv::Mat3b& img2) {
         planes1[i] = new Plane[cols];
         planes2[i] = new Plane[cols];
     }
-    std::cout << "Precomputing pixels weight" << std::endl;
+    // std::cout << "Precomputing pixels weight" << std::endl;
     int weightmat_size[] = {rows, cols, WINDOW_SIZE, WINDOW_SIZE};
     weights[0] = cv::Mat(4, weightmat_size, CV_32F);
     weights[1] = cv::Mat(4, weightmat_size, CV_32F);
     preComputePixelsWeights(img1, weights[0], WINDOW_SIZE);
     preComputePixelsWeights(img2, weights[1], WINDOW_SIZE);
     // greyscale images gradient
-    std::cout << "Evaluating images gradient" << std::endl;
+    // std::cout << "Evaluating images gradient" << std::endl;
     grads[0] = cv::Mat2f(rows, cols);
     grads[1] = cv::Mat2f(rows, cols);
     computeGreyGradient(img1, grads[0]);
     computeGreyGradient(img2, grads[1]);
 
-    std::cout << "Precomputing random planes" << std::endl;
+    // std::cout << "Precomputing random planes" << std::endl;
     initializeRandomPlanes(planes1, MAX_DISPARITY);
     initializeRandomPlanes(planes2, MAX_DISPARITY);
 
-    std::cout << "Evaluating initial planes cost" << std::endl;
+    // std::cout << "Evaluating initial planes cost" << std::endl;
     costs[0] = cv::Mat1f(rows, cols);
     costs[1] = cv::Mat1f(rows, cols);
-#pragma omp parallel for
+#pragma omp parallel for num_threads(8) collapse(2)
     for (int y = 0; y < rows; y++) {
         for (int x = 0; x < cols; x++) {
             costs[0](y, x) = planeMatchCost(planes1[y][x], x, y, WINDOW_SIZE, 0);
         }
     }
-#pragma omp parallel for
+#pragma omp parallel for num_threads(8) collapse(2)
     for (int y = 0; y < rows; y++) {
         for (int x = 0; x < cols; x++) {
             costs[1](y, x) = planeMatchCost(planes2[y][x], x, y, WINDOW_SIZE, 1);
@@ -405,10 +405,10 @@ void PatchMatch::init(const cv::Mat3b& img1, const cv::Mat3b& img2) {
 }
 
 void PatchMatch::propagation(int iteration, bool reverse) {
-    std::cout << "Processing left and right views" << std::endl;
+    // std::cout << "Processing left and right views" << std::endl;
     for (int i = 0 + reverse; i < iteration + reverse; i++) {
         bool itertype = (i % 2 == 0);
-        std::cout << "Iteration " << i - reverse + 1 << "/" << iteration - reverse << std::endl;
+        // std::cout << "Iteration " << i - reverse + 1 << "/" << iteration - reverse << std::endl;
         for (int work_view = 0; work_view < 2; work_view++) {
             if (itertype) {
                 // even iteration star with left top pixel
@@ -437,7 +437,7 @@ void PatchMatch::propagation(int iteration, bool reverse) {
 
 void PatchMatch::postProcess() {
     // checking pixels-plane disparity validity
-    std::cout << "Post Process" << std::endl;
+    // std::cout << "Post Process" << std::endl;
 
     cv::Mat1b left_validity(rows, cols, (unsigned char)false);
     cv::Mat1b right_validity(rows, cols, (unsigned char)false);
@@ -451,11 +451,10 @@ void PatchMatch::postProcess() {
             right_validity(y, x) = (std::abs(disps[1](y, x) - disps[0](y, x_match_left)) <= 1);
         }
     }
-    std::cout << "validity Process" << std::endl;
     // cv::imwrite("l_inv.png", 255 * left_validity);
     // cv::imwrite("r_inv.png", 255 * right_validity);
 // fill-in holes related to invalid pixels
-#pragma omp parallel for
+#pragma omp parallel for num_threads(8) collapse(2)
     for (int y = 0; y < rows; y++) {
         for (int x = 0; x < cols; x++) {
             if (!left_validity(y, x))

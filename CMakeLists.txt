@@ -20,10 +20,14 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 
 add_library(mlpnp src/mlpnp.cc)
 add_library(stereo src/patchmatch.cc)
+add_library(nms src/nms.cc)
 target_link_libraries(stereo ${OpenCV_LIBRARIES})
+target_link_libraries(nms ${OpenCV_LIBRARIES})
 
 add_executable(MLPnPtest test/mlpnp_test.cpp)
 add_executable(patchmatch test/patchmatchtest.cpp)
+add_executable(nms_test test/nms_test.cpp)
 
 target_link_libraries(patchmatch stereo)
 target_link_libraries(MLPnPtest ${OpenCV_LIBRARIES} mlpnp)
+target_link_libraries(nms_test nms)
