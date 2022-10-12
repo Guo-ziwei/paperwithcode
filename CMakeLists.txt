@@ -7,10 +7,8 @@ set(CMAKE_CXX_FLAGS "-std=c++17")
 set(CMAKE_CXX_FLAGS_DEBUG "-O0 -W -g -pthread")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -W -fopenmp")
 
-set(OpenCV_DIR "/usr/local/include/lib/cmake/opencv4")
-
 find_package(Eigen3 REQUIRED)
-find_package(OpenCV 4.5 REQUIRED)
+find_package(OpenCV REQUIRED)
 find_package(OpenMP)
 
 # message(${PROJECT_SOURCE_DIR})
@@ -20,9 +18,7 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 
 add_library(mlpnp src/mlpnp.cc)
 add_library(stereo src/patchmatch.cc)
-add_library(nms src/nms.cc)
 target_link_libraries(stereo ${OpenCV_LIBRARIES})
-target_link_libraries(nms ${OpenCV_LIBRARIES})
 
 add_executable(MLPnPtest test/mlpnp_test.cpp)
 add_executable(patchmatch test/patchmatchtest.cpp)
@@ -30,4 +26,4 @@ add_executable(nms_test test/nms_test.cpp)
 
 target_link_libraries(patchmatch stereo)
 target_link_libraries(MLPnPtest ${OpenCV_LIBRARIES} mlpnp)
-target_link_libraries(nms_test nms)
+target_link_libraries(nms_test ${OpenCV_LIBRARIES})
