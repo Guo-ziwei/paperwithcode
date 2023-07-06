@@ -5,8 +5,9 @@ using namespace std;
 
 MlPnPsolver::MlPnPsolver(
     const points_t& objectpoints, const pixels_t& imagepoints, Eigen::Matrix3d& rotation,
-    Eigen::Vector3d& t)
-    : inliers_num(0),
+    Eigen::Vector3d& t, const Eigen::Matrix3d& K)
+    : K_(K),
+      inliers_num(0),
       miterations(0),
       mnbestinliers(0),
       N(0),
@@ -18,12 +19,6 @@ MlPnPsolver::MlPnPsolver(
     allindices_vec.reserve(N);
     bearingvec.reserve(N);
     covs.reserve(N);
-    Eigen::Matrix3d K;
-    // clang-format off
-        K << 460, 0, 255,
-                0, 460, 255,
-                0, 0, 1;
-    // clang-format on
     Eigen::DiagonalMatrix<double, 3> cov_xx(
         pixel_noise_u * pixel_noise_u, pixel_noise_v * pixel_noise_v, 0);
     Eigen::Matrix3d cov_proj = K.inverse() * cov_xx * K.transpose();

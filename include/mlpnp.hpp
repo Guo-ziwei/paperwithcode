@@ -14,7 +14,7 @@ class MlPnPsolver {
     using cov3_t = std::vector<Eigen::Matrix3d, Eigen::aligned_allocator<Eigen::Matrix3d>>;
     MlPnPsolver(
         const points_t& objectpoints, const pixels_t& imagepoints, Eigen::Matrix3d& rotation,
-        Eigen::Vector3d& t);
+        Eigen::Vector3d& t, const Eigen::Matrix3d& K);
     ~MlPnPsolver();
     void setRansacParameters(
         double probabity = 0.99, std::size_t mininliers = 8, std::size_t maxiterations = 300,
@@ -51,24 +51,12 @@ class MlPnPsolver {
         const Eigen::Vector3d& pt, const Eigen::Matrix<double, 3, 2>& nullspace,
         const Eigen::Vector3d& vec, Eigen::Matrix<double, 2, 6>& jacs);
 
-    Eigen::Vector3d unproject(const Eigen::Vector2d& pixel) {
-        Eigen::Matrix3d K;
-        // clang-format off
-        K << 460, 0, 255,
-                0, 460, 255,
-                0, 0, 1;
-        // clang-format on
-        return K.inverse() * Eigen::Vector3d(pixel.x(), pixel.y(), 1);
+    Eigen::Vector3d unproject(const Eigen::Vector2d& pixel) const {
+        return K_.inverse() * Eigen::Vector3d(pixel.x(), pixel.y(), 1);
     }
 
-    Eigen::Vector2d project(const Eigen::Vector3d& ptcam) {
-        Eigen::Matrix3d K;
-        // clang-format off
-        K << 460, 0, 255,
-                0, 460, 255,
-                0, 0, 1;
-        // clang-format on
-        Eigen::Vector3d pixel = K * ptcam;
+    Eigen::Vector2d project(const Eigen::Vector3d& ptcam) const {
+        Eigen::Vector3d pixel = K_ * ptcam;
         return Eigen::Vector2d(pixel[0], pixel[1]);
     }
 
@@ -76,6 +64,7 @@ class MlPnPsolver {
     Eigen::Matrix3d mRi;
     Eigen::Vector3d mti;
     Eigen::Matrix4d mTcwi;
+    Eigen::Matrix3d K_;  // camera parameters
     std::vector<int8_t> inliers_vec;
     std::size_t inliers_num;
     // Current Ransac State

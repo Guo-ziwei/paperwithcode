@@ -56,7 +56,12 @@ bool loadPointsEigen(
 int main(int argc, char const* argv[]) {
     std::string filename0(argv[1]);
     // std::string filename1 = "/home/guoziwei/git/vio_data_simulation/keyframe/all_points_1.txt";
-
+    Eigen::Matrix3d K;
+    // clang-format off
+    K << 460 , 0, 255, 
+        0, 460, 255,
+        0, 0, 1;
+    // clang-format on
     std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> pointsvec_eigen;
     std::vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d>> pixelvec_eigen;
     loadPointsEigen(filename0, pointsvec_eigen, pixelvec_eigen);
@@ -64,7 +69,7 @@ int main(int argc, char const* argv[]) {
     Eigen::Vector3d t_w_c;
     Eigen::Matrix3d R_w_c;
     Eigen::Matrix4d T;
-    MlPnPsolver mlpnp(pointsvec_eigen, pixelvec_eigen, R_w_c, t_w_c);
+    MlPnPsolver mlpnp(pointsvec_eigen, pixelvec_eigen, R_w_c, t_w_c, K);
     std::vector<int8_t> inliersvec;
     int inliner_num = 0;
     T = mlpnp.iterate(10, inliersvec, inliner_num);
